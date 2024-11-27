@@ -1,0 +1,185 @@
+<html>
+<head>
+    <title>Atividade Helicóptero</title>
+    <script>
+        var TECLA_ESQ = 37;
+        var TECLA_DIR = 39;
+        var TECLA_CIMA = 38;
+        var TECLA_BAIXO = 40;
+
+        var teclaEsqPressionada = false;
+        var teclaDirPressionada = false;
+        var teclaCimaPressionada = false;
+        var teclaBaixoPressionada = false;
+
+        var canvas;
+        var context;
+
+        var imgBackground;
+        var imgHelicoptero = [];
+        var helicopteroFrame = 0; // Frame atual da animação
+        var frameCount = 0; // Contador de frames
+
+        var helicopteroX = 0; // Posição inicial do helicóptero
+        var helicopteroY = 0;
+        var velocidadeQueda = 0.2; // Velocidade da queda (gravidade)
+        var angulo = 0; // Ângulo de inclinação do helicóptero
+
+        var imgMoça; // Imagem da moça
+        var moçaX = 800; // Inicia a moça à direita
+        var moçaY = 335; // Posição Y da moça
+        var moçaFrame = 0;
+        var moçaSpeed = 2; // Velocidade da moça
+        var colisões = 0; // Contador de colisões
+
+        function IniciaCanvas() {
+            canvas = document.getElementById('meuCanvas');
+            context = canvas.getContext('2d');
+
+            imgBackground = new Image();
+            imgBackground.src = 'fundo.png';
+
+            // Carrega as imagens do helicóptero
+            for (var i = 1; i <= 3; i++) {
+                imgHelicoptero[i - 1] = new Image();
+                imgHelicoptero[i - 1].src = 'helicoptero' + i + '.png';
+            }
+
+            imgMoça = new Image();
+            imgMoça.src = 'sprite.png'; // Imagem da moça com 18 frames
+
+            setInterval(Loop, 1000 / 60); // 60 FPS
+        }
+
+        function Loop() {
+            context.clearRect(0, 0, canvas.width, canvas.height); // Limpa o canvas
+            context.drawImage(imgBackground, 0, 0);
+
+            // Exibe o contador de colisões no canto direito
+            context.fillStyle = 'black';
+            context.font = '20px Arial';
+            context.fillText('Resgatados: ' + colisões, canvas.width - 150, 30);
+            context.fillText('Tarcísio S. S.', canvas.width-790, 30);
+
+            // Salva o estado do contexto
+            context.save();
+
+            // Movimenta o helicóptero com base nas teclas pressionadas
+            if (teclaEsqPressionada) {
+                helicopteroX -= 5; // Move para a esquerda
+                angulo = -10; // Inclina para a esquerda
+            }
+            if (teclaDirPressionada) {
+                helicopteroX += 5; // Move para a direita
+                angulo = 10; // Inclina para a direita
+            }
+            if (teclaCimaPressionada) {
+                helicopteroY -= 5; // Move para cima
+                angulo = -5; // Inclina ligeiramente para frente
+            }
+            if (teclaBaixoPressionada) {
+                helicopteroY += 5; // Move para baixo
+                angulo = 5; // Inclina ligeiramente para trás
+            }
+
+            // Reseta o ângulo quando nenhuma tecla de direção está pressionada
+            if (!teclaEsqPressionada && !teclaDirPressionada && !teclaCimaPressionada && !teclaBaixoPressionada) {
+                angulo = 0; // Volta à posição vertical
+            }
+
+            // Aplica gravidade quando nenhuma tecla está pressionada
+            if (!teclaCimaPressionada && !teclaBaixoPressionada) {
+                helicopteroY += velocidadeQueda; // Aplica gravidade
+            }
+
+            // Atualiza o frame da animação do helicóptero
+            frameCount++;
+            if (frameCount % 5 === 0) { // Troca de imagem a cada 5 frames
+                helicopteroFrame = (helicopteroFrame + 1) % imgHelicoptero.length; // Alterna entre 0, 1, 2
+            }
+
+            // Translada e rotaciona o contexto do helicóptero
+            context.translate(helicopteroX + imgHelicoptero[helicopteroFrame].width / 2, helicopteroY + imgHelicoptero[helicopteroFrame].height / 2);
+            context.rotate(angulo * Math.PI / 180); // Converte para radianos
+
+            // Desenha o helicóptero
+            context.drawImage(imgHelicoptero[helicopteroFrame], -imgHelicoptero[helicopteroFrame].width / 2, -imgHelicoptero[helicopteroFrame].height / 2);
+
+            // Restaura o estado do contexto do helicóptero
+            context.restore();
+
+            // Atualiza a animação da moça
+            moçaX -= moçaSpeed; // Move a moça para a esquerda
+            if (moçaX < -80) {
+                moçaX = canvas.width; // Se sair da tela, reaparece à direita
+            }
+
+            // Animando a moça (com 18 frames)
+            var frameMoçaX = (moçaFrame % 9) * 44; // 9 frames na linha
+            var frameMoçaY = Math.floor(moçaFrame / 9) * 58; // 2 linhas de frames
+            context.drawImage(imgMoça, frameMoçaX, frameMoçaY, 44, 58, moçaX, moçaY, 44, 58);
+
+            // Atualiza o frame da animação da moça
+            moçaFrame = (moçaFrame + 1) % 18; // Alterna entre os 18 frames
+
+            // Verifica colisão entre o helicóptero e a moça
+            if (colideComMoça()) {
+                colisões++; // Incrementa o contador de colisões
+                moçaX = canvas.width; // Reposiciona a moça à direita
+            }
+
+            // Restringe o helicóptero dentro do canvas
+            helicopteroX = Math.max(0, Math.min(imgBackground.width - (imgHelicoptero[helicopteroFrame].width + 100), helicopteroX));
+            helicopteroY = Math.max(0, Math.min(imgBackground.height - (imgHelicoptero[helicopteroFrame].height + 62), helicopteroY));
+        }
+
+        // Verifica se o helicóptero colidiu com a moça
+        function colideComMoça() {
+            var helicX = helicopteroX + imgHelicoptero[helicopteroFrame].width / 2;
+            var helicY = helicopteroY + imgHelicoptero[helicopteroFrame].height / 2;
+            var helicWidth = imgHelicoptero[helicopteroFrame].width /2;
+            var helicHeight = imgHelicoptero[helicopteroFrame].height/2;
+
+            var moçaWidth = 44;
+            var moçaHeight = 58;
+
+            return !(helicX + helicWidth < moçaX || helicX > moçaX + moçaWidth || helicY + helicHeight < moçaY || helicY > moçaY + moçaHeight);
+        }
+
+        function VerificaTeclaPressionada(e) {
+            if (e.keyCode == TECLA_ESQ) {
+                teclaEsqPressionada = true;
+            }
+            if (e.keyCode == TECLA_DIR) {
+                teclaDirPressionada = true;
+            }
+            if (e.keyCode == TECLA_CIMA) {
+                teclaCimaPressionada = true;
+            }
+            if (e.keyCode == TECLA_BAIXO) {
+                teclaBaixoPressionada = true;
+            }
+        }
+
+        function VerificaTeclaSolta(e) {
+            if (e.keyCode == TECLA_ESQ) {
+                teclaEsqPressionada = false;
+            }
+            if (e.keyCode == TECLA_DIR) {
+                teclaDirPressionada = false;
+            }
+            if (e.keyCode == TECLA_CIMA) {
+                teclaCimaPressionada = false;
+            }
+            if (e.keyCode == TECLA_BAIXO) {
+                teclaBaixoPressionada = false;
+            }
+        }
+    </script>
+</head>
+<body onkeydown="VerificaTeclaPressionada(event);" onkeyup="VerificaTeclaSolta(event);" onload="IniciaCanvas();">
+    <canvas id="meuCanvas" width="800" height="600">
+        Seu browser não suporta canvas!
+    </canvas>
+</body>
+</html>
